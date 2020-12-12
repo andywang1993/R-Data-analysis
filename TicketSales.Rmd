@@ -1,0 +1,84 @@
+---
+title: "Practice"
+output: html_document
+---
+
+```{r}
+download.file("http://s3.amazonaws.com/assets.datacamp.com/production/course_1294/datasets/sales.csv","sales.csv")
+
+sales <- read.csv("sales.csv", stringsAsFactors = FALSE)
+                          # stringsAsFactors argument to FALSE 
+                          # character strings are preserved
+```
+
+
+```{r}
+dim(sales)
+head(sales,10)
+tail(sales)
+str(sales)
+summary(sales)
+```
+
+remove redundent column
+```{r}
+sales2 <- sales[,-1]
+```
+information not worth keeping
+```{r}
+ncol(sales2)-15
+keep <- 5:(ncol(sales2) - 15)
+keep
+sales3 <- sales2[,keep]
+```
+separate columns:one for date one for time
+```{r}
+library(tidyr)
+# look at event_date_time col
+head(sales3$event_date_time)
+sales4 <- separate(sales3, event_date_time,c('event_date','event_time'),sep = " ",remove = TRUE )
+head(sales4$sales_ord_create_dttm)
+
+sales5 <- separate(sales4,sales_ord_create_dttm,c('order_create_dt','order_create_time'),sep = " ",remove = TRUE)
+sales5[c(2516,3863,3864),c(16,17)]
+```
+
+```{r}
+# Define an issues vector
+issues <- c(2516,3863,4082,4183)
+sales3$sales_ord_create_dttm[issues]
+#check it is just missing value.
+```
+
+Ex8: Identifying dates
+all of the date columns in this dataset have the substring “dt” in their name
+```{r}
+library(stringr)
+# Find columns of sales5 containing "dt": date_cols
+date_cols <- str_detect(colnames(sales5),"dt")
+```
+
+```{r}
+date_cols
+sales5[,date_cols]
+```
+
+```{r}
+library(lubridate)
+sales5[,date_cols] <- lapply(sales5[,date_cols],ymd)
+```
+```{r}
+missing <- lapply(sales5[, date_cols], is.na)
+missing
+num_missing <- sapply(missing, sum)
+num_missing
+```
+combining columns
+```{r}
+sales6 <- unite(sales5,venue_city_state,c("venue_city","venue_state"),sep = ",")
+
+```
+
+
+
+

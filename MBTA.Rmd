@@ -1,0 +1,59 @@
+---
+title: "MBTA"
+output: html_document
+---
+
+```{r}
+url_mbta <- "http://s3.amazonaws.com/assets.datacamp.com/production/course_1294/datasets/mbta.xlsx"
+mbta <- read.csv("/Users/wangweichieh/Downloads/mbta.csv",skip = 1 )
+
+```
+
+```{r}
+str(mbta)
+head(mbta,6)
+summary(mbta)
+```
+
+remove useless row 1, 7, 11
+```{r}
+mbta2 <- mbta[-c(1,7,11),]
+mbta3 <- mbta2[,-1]
+```
+We want variables in columns
+```{r}
+library(tidyr)
+mbta4 <- gather(mbta3,key = "month", value = "thou_riders",-mode)
+typeof(mbta4$thou_riders)
+head(mbta4)
+```
+```{r}
+mbta5 <- spread(mbta4,mode,thou_riders)
+mbta6 <- separate(data = mbta5,col = month,into = c("year","month"), sep = 5)
+mbta6 <- separate(mbta6,month,c("a","month"),sep = 1)
+mbta6 <- mbta6[,-2]
+head(mbta6)
+```
+
+```{r}
+summary(mbta6)
+```
+boat' max got some issue
+find the abnormal one
+```{r}
+i <- which(mbta6$Boat == 40)
+i
+mbta6$Boat[i] <- 4
+hist(mbta6$Boat)
+```
+```{r}
+head(mbta6)
+table(mbta4$mode)
+mbta_all <- mbta6 %>%
+  unite(year_mon, year, month, sep = "") %>%
+  gather(mode, thou_riders, -year_mon)
+library(dplyr)
+mbta_boat <- mbta_all %>% filter(mode %in% c("Boat","Trackless Trolley"))
+```
+
+

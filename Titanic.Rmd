@@ -1,0 +1,127 @@
+---
+title: "Titanic"
+output: html_document
+---
+1.Read the data
+```{r}
+library(caret)
+
+missing.types <- c('NA', '')
+train.column.types <- c('integer',   # PassengerId
+                        'factor',    # Survived 
+                        'factor',    # Pclass
+                        'character', # Name
+                        'factor',    # Sex
+                        'numeric',   # Age
+                        'integer',   # SibSp
+                        'integer',   # Parch
+                        'character', # Ticket
+                        'numeric',   # Fare
+                        'character', # Cabin
+                        'factor'     # Embarked
+)
+
+test.column.types <- train.column.types[-2]
+
+train <- readData(Titanic.path, train.file.name, train.column.types, missing.types)
+test <- readData(Titanic.path, test.file.name, test.column.types, missing.types)
+test$Survived <- NA # add Survived column to test dataset and fill it out with NA.
+
+combi <- rbind(train, test) # combine training and test set for further manipulation
+
+```
+2.Exploratory Data abalysis
+```{r}
+str(train)
+str(test)
+summary(train)
+summary(test)
+```
+Visualize the relationship between features and response
+
+Check the relation between Sex and Survived
+```{r}
+library(ggplot2)
+p <- ggplot(train, aes(x=Survived,fill = Sex) )+geom_bar()
+p
+```
+Consistent with our prior, the female is more likely to survive.
+
+
+Check the relation between Age and Survive.
+```{r}
+#histogram
+p  <- ggplot(train, aes(x=Age, fill = Survived)) + geom_histogram()
+p
+#find missing value in Age
+x <- which(is.na(train$Age))
+length(x)
+p  <- ggplot(train[!is.na(train$Age), ], aes(x=Age, fill = Survived)) + geom_histogram()
+p
+#density plot
+#-which(is.na) = !is.na
+p1 <- ggplot(train[-which(is.na(train$Age)), ], aes(x=Age, fill=Survived)) + geom_density(alpha=0.6)+ facet_grid(.~Sex);
+p1
+p1 <- ggplot(train[!is.na(train$Age), ], aes(x=Age, fill=Survived)) + geom_density(alpha=0.6)+ facet_grid(.~Sex);
+p1
+```
+Check the relation between Fare and Survive.
+```{r}
+p <- ggplot(train, aes(x=Fare, fill=Survived)) + geom_histogram()+facet_grid(~Pclass)
+p
+#Apperently,peolple who survived afforded highe fare for the ticked, which indicates the higher fare may correspond to the cabin with better escaping route.
+```
+
+```{r}
+#prop.table can create proportion, 
+#margin = 2, divide by the sum of col
+#margin = 1, divide by the sum of row
+t <- table(train$Survived,train$Pclass)
+t
+prop.table(t, margin = 2)
+
+```
+We can see that Proportion of Surviers in Pclass 1 are higher than Pclass2 and Pclass3.
+
+
+Check the relation between Embarked and Survived.
+```{r}
+p <- ggplot(train[!is.na(train$Embarked),] , aes(x= Embarked , fill = Survived)) + geom_bar()
+p
+```
+```{r}
+p <- ggplot(train , aes(x= Embarked , fill = Survived)) + geom_bar()
+p
+
+```
+3. Data Clearing and Feature Engineering
+```{r}
+title.extract <- function(x){
+    strsplit(x, split = "[,.]")[[1]][2]
+}
+
+combi$Title <- sapply(combi$Name, FUN = title.extract)
+combi$Title <- sub(" ","",x = combi$Title)
+
+combi$Title <- as.factor(combi$Title)
+combi$Surname <- sapply(combi$Name, FUN = function(x){
+    strsplit(x, split = "[,.]")[[1]][1]
+})
+
+```
+
+Use SibSp and Parch. Create a new feature FamilySize which equals SibSq + Parch +1
+```{r}
+combi$FamilySize <- combi$SibSp + combi$Parch + 1
+combi$FamilyID <- paste(as.character(combi$FamilySize), combi$Surname, sep = "")
+combi$FamilyID[combi$FamilySize <= 2] <- "Small"
+
+famIDs <- data.frame(table(combi$FamilyID))
+
+famIDs <- famIDs[famIDs$Freq <= 2,] 
+
+combi$FamilyID[combi$FamilyID %in% famIDs$Var1] <- "Small"
+combi$FamilyID <- as.factor(combi$FamilyID)
+
+```
+
